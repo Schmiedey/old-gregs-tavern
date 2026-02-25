@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Old Greg's Tavern</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2285%22>🍺</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <!-- ═══════ TITLE SCREEN ═══════ -->
+  <div id="title-screen" class="screen active">
+    <div class="title-content">
+      <div class="tavern-sign">
+        <div class="sign-bracket left">⛓️</div>
+        <div class="sign-board">
+          <h1>Old Greg's<br/>Tavern</h1>
+          <p class="subtitle">A D&D-Lite AI Adventure</p>
+        </div>
+        <div class="sign-bracket right">⛓️</div>
+      </div>
+      <div class="title-art">
+        <pre class="ascii-art">
+     🏰
+   ╔══════╗
+   ║ 🍺🕯️ ║
+   ║ OPEN ║
+   ╚══╦═╦══╝
+  ════╩═╩════
+        </pre>
+      </div>
+      <button id="btn-new-game" class="btn btn-primary glow">⚔️ New Adventure</button>
+      <p class="hint">Solo or with friends — your story awaits</p>
+    </div>
+  </div>
+
+  <!-- ═══════ CHARACTER CREATION ═══════ -->
+  <div id="char-screen" class="screen">
+    <div class="char-creation">
+      <h2>🛡️ Create Your Hero</h2>
+
+      <div class="form-group">
+        <label for="char-name">Name</label>
+        <input type="text" id="char-name" placeholder="Enter your name…" maxlength="24" autofocus />
+      </div>
+
+      <div class="form-group">
+        <label>Race</label>
+        <div class="option-grid" id="race-grid">
+          <button class="opt-btn" data-value="Human"><span class="opt-icon">🧑</span>Human</button>
+          <button class="opt-btn" data-value="Elf"><span class="opt-icon">🧝</span>Elf</button>
+          <button class="opt-btn" data-value="Dwarf"><span class="opt-icon">⛏️</span>Dwarf</button>
+          <button class="opt-btn" data-value="Halfling"><span class="opt-icon">🦶</span>Halfling</button>
+          <button class="opt-btn" data-value="Orc"><span class="opt-icon">👹</span>Orc</button>
+          <button class="opt-btn" data-value="Tiefling"><span class="opt-icon">😈</span>Tiefling</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Class</label>
+        <div class="option-grid" id="class-grid">
+          <button class="opt-btn" data-value="Warrior"><span class="opt-icon">⚔️</span>Warrior</button>
+          <button class="opt-btn" data-value="Mage"><span class="opt-icon">🔮</span>Mage</button>
+          <button class="opt-btn" data-value="Rogue"><span class="opt-icon">🗡️</span>Rogue</button>
+          <button class="opt-btn" data-value="Cleric"><span class="opt-icon">✝️</span>Cleric</button>
+          <button class="opt-btn" data-value="Ranger"><span class="opt-icon">🏹</span>Ranger</button>
+          <button class="opt-btn" data-value="Bard"><span class="opt-icon">🎵</span>Bard</button>
+        </div>
+      </div>
+
+      <div id="stat-block" class="stat-block hidden">
+        <h3>📊 Rolled Stats <button id="btn-reroll" class="btn btn-sm">🎲 Reroll</button></h3>
+        <div class="stats-grid">
+          <div class="stat"><span class="stat-label">STR</span><span class="stat-val" id="stat-str">-</span></div>
+          <div class="stat"><span class="stat-label">DEX</span><span class="stat-val" id="stat-dex">-</span></div>
+          <div class="stat"><span class="stat-label">CON</span><span class="stat-val" id="stat-con">-</span></div>
+          <div class="stat"><span class="stat-label">INT</span><span class="stat-val" id="stat-int">-</span></div>
+          <div class="stat"><span class="stat-label">WIS</span><span class="stat-val" id="stat-wis">-</span></div>
+          <div class="stat"><span class="stat-label">CHA</span><span class="stat-val" id="stat-cha">-</span></div>
+        </div>
+      </div>
+
+      <button id="btn-start-adventure" class="btn btn-primary" disabled>🍺 Enter the Tavern</button>
+    </div>
+  </div>
+
+  <!-- ═══════ MAIN GAME ═══════ -->
+  <div id="game-screen" class="screen">
+    <!-- Sidebar: Character Sheet -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <h3 id="sb-name">Hero</h3>
+        <span id="sb-race-class" class="sb-sub"></span>
+        <span id="sb-level" class="sb-level">Lvl 1</span>
+      </div>
+      <div class="hp-bar-wrap">
+        <div class="hp-bar" id="hp-bar"><span id="hp-text">20 / 20</span></div>
+      </div>
+      <div class="xp-bar-wrap">
+        <div class="xp-bar" id="xp-bar"><span id="xp-text">XP 0 / 100</span></div>
+      </div>
+      <div class="sb-stats" id="sb-stats"></div>
+      <div class="sb-section">
+        <h4>🎒 Inventory</h4>
+        <ul id="sb-inventory"><li class="empty">Empty</li></ul>
+      </div>
+      <div class="sb-section">
+        <h4>📜 Quests</h4>
+        <ul id="sb-quests"><li class="empty">None yet</li></ul>
+      </div>
+      <div class="sb-section">
+        <h4>💰 Gold: <span id="sb-gold">10</span></h4>
+      </div>
+      <button id="btn-toggle-sidebar" class="btn-sidebar-toggle">◀</button>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="game-main">
+      <!-- Narrative Log -->
+      <div id="narrative-log" class="narrative-log">
+        <div id="messages" class="messages"></div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div id="quick-actions" class="quick-actions">
+        <!-- Populated dynamically -->
+      </div>
+
+      <!-- Input -->
+      <div class="input-bar">
+        <div class="dice-tray">
+          <button class="btn btn-dice" data-sides="20" title="Roll d20">d20</button>
+          <button class="btn btn-dice" data-sides="12" title="Roll d12">d12</button>
+          <button class="btn btn-dice" data-sides="6" title="Roll d6">d6</button>
+        </div>
+        <input type="text" id="player-input" placeholder="What do you do?" maxlength="500" />
+        <button id="btn-send" class="btn btn-send">⚔️</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- ═══════ DICE ROLL OVERLAY ═══════ -->
+  <div id="dice-overlay" class="dice-overlay hidden">
+    <div class="dice-result">
+      <div class="dice-icon">🎲</div>
+      <div class="dice-value" id="dice-value">20</div>
+      <div class="dice-label" id="dice-label">d20</div>
+    </div>
+  </div>
+
+  <!-- ═══════ COMBAT OVERLAY ═══════ -->
+  <div id="combat-overlay" class="combat-overlay hidden">
+    <div class="combat-banner">⚔️ COMBAT ⚔️</div>
+  </div>
+
+  <!-- ═══════ LOADING ═══════ -->
+  <div id="loading" class="loading hidden">
+    <div class="loading-quill">✒️</div>
+    <span>The Game Master ponders…</span>
+  </div>
+
+  <script src="/js/dice.js"></script>
+  <script src="/js/character.js"></script>
+  <script src="/js/ai.js"></script>
+  <script src="/js/combat.js"></script>
+  <script src="/js/game.js"></script>
+</body>
+</html>
