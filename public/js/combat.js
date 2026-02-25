@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════
-   combat.js — Multi-enemy combat with spells,
-   status effects, enemy HP bars
+   combat.js — Visual combat with screen shake,
+   hit flash, floating damage numbers
    ═══════════════════════════════════════════════ */
 
 const Combat = (() => {
@@ -33,18 +33,73 @@ const Combat = (() => {
   function getAliveEnemies() { return enemies.filter((e) => e.hp > 0); }
 
   function renderEnemyBars() {
-    const c = document.getElementById("enemy-bars");
+    const c = document.getElementById("combat-arena");
     if (!c) return;
     c.innerHTML = "";
+
     for (const e of enemies) {
-      if (e.hp <= 0) continue;
-      const pct = Math.max(0, (e.hp / e.maxHp) * 100);
-      const sts = (e.statusEffects || []).map((s) => s.icon || "").join("");
       const div = document.createElement("div");
-      div.className = "enemy-bar-row";
-      div.innerHTML = `<span class="enemy-name">${e.name} ${sts}</span><div class="enemy-hp-wrap"><div class="enemy-hp-fill" style="width:${pct}%"></div><span class="enemy-hp-text">${e.hp}/${e.maxHp}</span></div>`;
+      div.className = "arena-enemy" + (e.hp <= 0 ? " dead" : "");
+      const pct = Math.max(0, (e.hp / e.maxHp) * 100);
+      const hpColor = pct > 50 ? "#5a5" : pct > 25 ? "#c84" : "#c44";
+      const sts = (e.statusEffects || []).map((s) => `<span class="arena-status">${s.icon || ""}</span>`).join("");
+
+      div.innerHTML = `
+        <div class="arena-enemy-sprite">${getEnemyEmoji(e.name)}</div>
+        <div class="arena-enemy-name">${e.name} ${sts}</div>
+        <div class="arena-hp-bar"><div class="arena-hp-fill" style="width:${pct}%;background:${hpColor}"></div></div>
+        <div class="arena-hp-text">${e.hp}/${e.maxHp}</div>
+      `;
       c.appendChild(div);
     }
+  }
+
+  function getEnemyEmoji(name) {
+    const n = name.toLowerCase();
+    if (n.includes("dragon")) return "🐉";
+    if (n.includes("goblin")) return "👺";
+    if (n.includes("skeleton") || n.includes("undead")) return "💀";
+    if (n.includes("wolf")) return "🐺";
+    if (n.includes("spider")) return "🕷️";
+    if (n.includes("orc")) return "👹";
+    if (n.includes("rat")) return "🐀";
+    if (n.includes("bandit") || n.includes("thief")) return "🥷";
+    if (n.includes("bear")) return "🐻";
+    if (n.includes("troll")) return "🧟";
+    if (n.includes("demon")) return "👿";
+    if (n.includes("ghost") || n.includes("spirit")) return "👻";
+    if (n.includes("slime") || n.includes("ooze")) return "🟢";
+    if (n.includes("bat")) return "🦇";
+    if (n.includes("snake") || n.includes("serpent")) return "🐍";
+    return "⚔️";
+  }
+
+  /* ─── Visual effects ─── */
+  function screenShake(intensity = 5, duration = 300) {
+    const el = document.getElementById("game-screen");
+    if (!el) return;
+    el.classList.add("shake");
+    el.style.setProperty("--shake-intensity", intensity + "px");
+    setTimeout(() => el.classList.remove("shake"), duration);
+  }
+
+  function hitFlash(target = "arena") {
+    const el = document.getElementById(target === "player" ? "sidebar" : "combat-arena");
+    if (!el) return;
+    el.classList.add("hit-flash");
+    setTimeout(() => el.classList.remove("hit-flash"), 200);
+  }
+
+  function floatingDamage(amount, x, y, type = "damage") {
+    const container = document.getElementById("combat-arena") || document.getElementById("game-screen");
+    if (!container) return;
+    const float = document.createElement("div");
+    float.className = "floating-damage " + type;
+    float.textContent = type === "heal" ? `+${amount}` : `-${amount}`;
+    float.style.left = (x || 50) + "%";
+    float.style.top = (y || 30) + "%";
+    container.appendChild(float);
+    setTimeout(() => float.remove(), 1200);
   }
 
   async function playerAttack(char, targetIndex = 0) {
@@ -60,7 +115,9 @@ const Combat = (() => {
     if (atkRoll === 20) {
       dmg = Math.max(1, Dice.roll(6, 2).total + mod + Character.getDmgBonus(char));
       target.hp = Math.max(0, target.hp - dmg);
-      Sound.swordHit();
+      Sound.swordHit(); screenShake(8); hitFlash("arena");
+      floatingDamage(dmg, 50, 20, "crit");
+      if (typeof Particles !== "undefined") Particles.burst("sparks", 15);
       narrative = `⚔️ **CRITICAL HIT!** Nat 20! (${total} vs AC ${target.ac}) — **${dmg} dmg** to ${target.name}!`;
     } else if (atkRoll === 1) {
       Sound.miss();
@@ -68,7 +125,8 @@ const Combat = (() => {
     } else if (total >= target.ac) {
       dmg = Math.max(1, Dice.roll(6).rolls[0] + mod + Character.getDmgBonus(char));
       target.hp = Math.max(0, target.hp - dmg);
-      Sound.swordHit();
+      Sound.swordHit(); screenShake(3); hitFlash("arena");
+      floatingDamage(dmg, 50, 20);
       narrative = `⚔️ (🎲${atkRoll}+${mod}=${total} vs AC ${target.ac}) — **Hit! ${dmg} dmg** to ${target.name}.`;
     } else {
       Sound.miss();
@@ -78,7 +136,7 @@ const Combat = (() => {
     const allDead = getAliveEnemies().length === 0;
     if (allDead) { narrative += "\n\n🏆 **Victory!**"; end(); }
     renderEnemyBars();
-    return { hit: total >= target.ac, roll: atkRoll, damage: dmg, killed: allDead, narrative };
+    return { hit: total >= target.ac, roll: atkRoll, damage: dmg, killed: allDead, narrative, enemyName: target.name };
   }
 
   async function playerSkill(char, skillIndex) {
@@ -88,6 +146,7 @@ const Combat = (() => {
     if (!Character.useMana(char, skill.manaCost)) return { narrative: `Not enough mana for **${skill.name}**! (Need ${skill.manaCost})`, killed: false };
     skill.currentCooldown = skill.cooldown;
     Sound.magic();
+    if (typeof Particles !== "undefined") Particles.burst("mystical", 10);
     const target = getAliveEnemies()[0];
     if (!target && !["heal", "buff", "dodge"].includes(skill.type)) return { narrative: "No target!", killed: false };
     const statMod = Dice.modifier(char.stats[skill.stat] || 10);
@@ -97,6 +156,7 @@ const Combat = (() => {
       case "damage": {
         const d = Math.max(1, Character.rollDice(skill.dmgDice) + statMod + Character.getDmgBonus(char));
         target.hp = Math.max(0, target.hp - d);
+        screenShake(5); hitFlash("arena"); floatingDamage(d, 50, 20);
         narrative += `**${d} damage** to ${target.name}!`;
         if (target.hp <= 0) narrative += ` 💀 **Slain!**`;
         break;
@@ -104,28 +164,32 @@ const Combat = (() => {
       case "heal": {
         const a = Math.max(1, Character.rollDice("1d8") + statMod);
         Character.heal(char, a); Sound.heal();
+        floatingDamage(a, 50, 50, "heal");
         narrative += `Restores **${a} HP**! (${char.hp}/${char.maxHp})`;
         break;
       }
       case "buff": {
-        if (skill.name.includes("Shield")) Character.addStatus(char, "Shielded", 3);
+        if (skill.name.includes("Shield") || skill.name.includes("Arcane")) Character.addStatus(char, "Shielded", 3);
         else if (skill.name.includes("Bless")) Character.addStatus(char, "Blessed", 3);
-        else if (skill.name.includes("Inspire")) Character.addStatus(char, "Inspired", 2);
-        else if (skill.name.includes("Mark")) Character.addStatus(char, "Marked", 3);
+        else if (skill.name.includes("Inspire") || skill.name.includes("Hymn")) Character.addStatus(char, "Inspired", 2);
+        else if (skill.name.includes("Mark") || skill.name.includes("Hunter")) Character.addStatus(char, "Marked", 3);
+        else Character.addStatus(char, "Blessed", 2);
         narrative += "Buff applied!";
         break;
       }
       case "stun": {
         const d = Character.rollDice(skill.dmgDice);
-        if (d > 0) { target.hp = Math.max(0, target.hp - d); narrative += `${d} dmg! `; }
+        if (d > 0) { target.hp = Math.max(0, target.hp - d); narrative += `${d} dmg! `; floatingDamage(d, 50, 20); }
         target.statusEffects.push({ name: "Stunned", duration: 1, skipTurn: true, icon: "💫" });
         narrative += `${target.name} **Stunned**!`;
+        screenShake(4);
         break;
       }
       case "poison": {
         const d = Math.max(1, Character.rollDice(skill.dmgDice) + statMod);
         target.hp = Math.max(0, target.hp - d);
         target.statusEffects.push({ name: "Poisoned", duration: 3, hpPerTurn: -2, icon: "🤢" });
+        floatingDamage(d, 50, 20);
         narrative += `${d} dmg! ${target.name} **Poisoned**!`;
         break;
       }
@@ -133,6 +197,7 @@ const Combat = (() => {
         const d = Math.max(1, Character.rollDice(skill.dmgDice) + statMod);
         target.hp = Math.max(0, target.hp - d);
         target.statusEffects.push({ name: "Slowed", duration: 2, atkPenalty: -2, icon: "🐌" });
+        floatingDamage(d, 50, 20);
         narrative += `${d} dmg! ${target.name} **Slowed**!`;
         break;
       }
@@ -143,7 +208,7 @@ const Combat = (() => {
       }
       case "debuff": {
         const d = Character.rollDice(skill.dmgDice);
-        if (d > 0) { target.hp = Math.max(0, target.hp - d); narrative += `${d} psychic dmg! `; }
+        if (d > 0) { target.hp = Math.max(0, target.hp - d); narrative += `${d} psychic dmg! `; floatingDamage(d, 50, 20); }
         target.statusEffects.push({ name: "Weakened", duration: 3, atkPenalty: -2, icon: "📉" });
         narrative += `${target.name} **Weakened**!`;
         break;
@@ -154,13 +219,12 @@ const Combat = (() => {
       narrative += "\n\n🏆 **Victory!**"; end(); killed = true;
     }
     renderEnemyBars();
-    return { narrative, killed };
+    return { narrative, killed, enemyName: target?.name };
   }
 
   async function enemyAttack(char) {
     const narratives = [];
     for (const e of getAliveEnemies()) {
-      // Process enemy status effects
       if (e.statusEffects) {
         for (const eff of e.statusEffects) {
           if (eff.hpPerTurn) {
@@ -183,11 +247,15 @@ const Combat = (() => {
 
       if (atkRoll === 20) {
         const d = Math.max(1, Dice.roll(6, 2).total + e.atk);
-        Character.takeDamage(char, d); Sound.hit();
+        Character.takeDamage(char, d); Sound.hit(); Sound.screenShake();
+        screenShake(8, 400); hitFlash("player");
+        floatingDamage(d, 50, 60, "crit");
         narratives.push(`🔥 **${e.name} CRITS!** — **${d} dmg!** (HP: ${char.hp}/${char.maxHp})`);
       } else if (total >= playerAC) {
         const d = Math.max(1, Dice.roll(6).rolls[0] + e.atk + penalty);
         Character.takeDamage(char, d); Sound.hit();
+        screenShake(4); hitFlash("player");
+        floatingDamage(d, 50, 60);
         narratives.push(`🗡️ ${e.name} (${total} vs AC ${playerAC}) — **${d} dmg** (HP: ${char.hp}/${char.maxHp})`);
       } else {
         Sound.miss();
@@ -204,7 +272,7 @@ const Combat = (() => {
   function end() {
     active = false; enemies = [];
     document.getElementById("combat-overlay")?.classList.add("hidden");
-    const b = document.getElementById("enemy-bars"); if (b) b.innerHTML = "";
+    const b = document.getElementById("combat-arena"); if (b) b.innerHTML = "";
   }
 
   function getAttackStat(cc) {
@@ -226,5 +294,6 @@ const Combat = (() => {
   return {
     start, isActive, getEnemies, getAliveEnemies, renderEnemyBars,
     playerAttack, playerSkill, enemyAttack, end, getCombatActions, getAttackStat,
+    screenShake, hitFlash, floatingDamage,
   };
 })();

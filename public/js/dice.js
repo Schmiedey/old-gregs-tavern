@@ -5,6 +5,7 @@
 const Dice = (() => {
   const history = [];
   const MAX_HISTORY = 50;
+  let nat20Count = 0;
 
   function roll(sides = 20, count = 1) {
     const rolls = [];
@@ -16,6 +17,7 @@ const Dice = (() => {
     const result = roll(sides, count);
     history.unshift({ timestamp: Date.now(), label, sides, rolls: result.rolls, total: result.total });
     if (history.length > MAX_HISTORY) history.pop();
+    if (sides === 20 && result.rolls.includes(20)) nat20Count++;
     return result;
   }
 
@@ -33,6 +35,7 @@ const Dice = (() => {
   function modStr(stat) { const m = modifier(stat); return m >= 0 ? `+${m}` : `${m}`; }
 
   function getHistory() { return history; }
+  function getNat20Count() { return nat20Count; }
   function clearHistory() { history.length = 0; }
 
   function renderHistory(container) {
@@ -74,5 +77,5 @@ const Dice = (() => {
     });
   }
 
-  return { roll, rollAndLog, rollStat, rollStats, modifier, modStr, getHistory, clearHistory, renderHistory, showRollOverlay };
+  return { roll, rollAndLog, rollStat, rollStats, modifier, modStr, getHistory, getNat20Count, clearHistory, renderHistory, showRollOverlay };
 })();

@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════
    ai.js — AI Game Master: client-side streaming,
-   memory/world state, model selection, rate limiting
+   memory/world state, NPC tracking, lore, scene images
    ═══════════════════════════════════════════════════════ */
 
 const AI = (() => {
@@ -24,8 +24,12 @@ PERSONALITY:
 - Address the player by name. Use second person ("You step forward…").
 
 RULES:
-1. **Exploration**: Describe environments vividly (2-4 sentences). Offer 2-4 numbered options at the end.
+1. **Exploration**: Describe environments vividly (2-4 sentences). Offer 2-4 numbered options.
 2. **NPCs**: Give NPCs names, personalities, motives. Use dialogue in quotes.
+   When introducing or re-encountering an NPC, include:
+   \`\`\`npc
+   {"name":"Bartok","race":"Dwarf","role":"Blacksmith","disposition":"friendly"}
+   \`\`\`
 3. **Combat**: Output a JSON block:
    \`\`\`combat
    {"enemies":[{"name":"Goblin Scout","hp":15,"ac":12,"atk":4}],"description":"A goblin leaps from the shadows!"}
@@ -42,22 +46,32 @@ RULES:
    \`\`\`quest
    {"action":"add","quest":"Find the Lost Amulet"}
    \`\`\`
-7. **Locations** (when player moves to new area):
+   Use "complete" action when quests are done.
+7. **Locations** (when player moves):
    \`\`\`location
    {"name":"Dark Forest","type":"wilderness","connections":["Old Greg's Tavern","Goblin Cave"]}
    \`\`\`
-8. **Story Flow**: Coherent narrative. Build tension. Meaningful choices. Absurd player actions get creative consequences.
-9. **The Tavern**: Home base at a crossroads in Eldermoor.
-10. **Options**: ALWAYS end with 2-4 numbered options like:
+8. **Scenes** (EVERY response — for image generation):
+   \`\`\`scene
+   {"prompt":"A dimly lit medieval tavern with oak beams, a roaring fireplace, and tankards on worn tables","mood":"warm"}
+   \`\`\`
+9. **Lore** (when revealing world history/knowledge):
+   \`\`\`lore
+   {"title":"The Fall of Eldermoor","category":"history","text":"Long ago, the great fortress of Eldermoor fell to the shadow armies..."}
+   \`\`\`
+   Categories: history, people, places, items, creatures, myths
+10. **Story Flow**: Coherent narrative. Build tension. Meaningful choices.
+11. **The Tavern**: Home base at a crossroads in Eldermoor.
+12. **Options**: ALWAYS end with 2-4 numbered options like:
     1. ⚔️ Draw your sword
     2. 🗣️ Negotiate
     3. 🏃 Retreat
-11. **Length**: 100-200 words. Punchy.
+13. **Length**: 100-200 words. Punchy.
+14. **Dungeon Delve**: If player is in dungeon mode, narrate floor-by-floor progression with increasing difficulty.
 
-FORMAT: Use **bold**, *italic*, "quotes". Embed code blocks inline. Always end with numbered options.`;
+FORMAT: Use **bold**, *italic*, "quotes". Embed code blocks inline. Always end with numbered options. Always include a scene block.`;
 
   function configure(key, selectedModel, proxy = false) {
-    // Fall back to embedded key from config.js (injected at deploy time)
     apiKey = key || window.GAME_CONFIG?.apiKey || "";
     model = selectedModel || DEFAULT_MODEL;
     useProxy = proxy;
@@ -66,7 +80,7 @@ FORMAT: Use **bold**, *italic*, "quotes". Embed code blocks inline. Always end w
   function init(characterSummary) {
     conversationHistory = [
       { role: "system", content: SYSTEM_PROMPT },
-      { role: "system", content: `PLAYER CHARACTER:\n${characterSummary}\n\nBEGIN: The player walks through the oak door of Old Greg's Tavern on a stormy night. Describe the tavern, introduce yourself (Old Greg), hint at adventure. Include a \`\`\`location block. End with options.` },
+      { role: "system", content: `PLAYER CHARACTER:\n${characterSummary}\n\nBEGIN: The player walks through the oak door of Old Greg's Tavern on a stormy night. Describe the tavern, introduce yourself (Old Greg), hint at adventure. Include a \`\`\`location block, a \`\`\`scene block, and a \`\`\`npc block for Old Greg. End with options.` },
     ];
     worldMemory = { npcsKnown: [], locationsVisited: ["Old Greg's Tavern"], majorChoices: [], lore: [] };
   }
@@ -84,7 +98,8 @@ FORMAT: Use **bold**, *italic*, "quotes". Embed code blocks inline. Always end w
   }
 
   function getMemorySummary() {
-    return `[WORLD] NPCs: ${worldMemory.npcsKnown.join(", ") || "none"}. Places: ${worldMemory.locationsVisited.join(", ")}. Choices: ${worldMemory.majorChoices.slice(-5).join("; ") || "none"}.`;
+    const npcSummary = typeof NPCs !== "undefined" ? NPCs.getForAI() : worldMemory.npcsKnown.join(", ") || "none";
+    return `[WORLD] NPCs: ${npcSummary}. Places: ${worldMemory.locationsVisited.join(", ")}. Choices: ${worldMemory.majorChoices.slice(-5).join("; ") || "none"}.`;
   }
 
   async function sendStreaming(playerMessage, characterSummary, onToken) {
@@ -94,14 +109,14 @@ FORMAT: Use **bold**, *italic*, "quotes". Embed code blocks inline. Always end w
     lastReq = Date.now();
 
     addMessage("user", `${getMemorySummary()}\n[Char: ${characterSummary}]\n\nPlayer: ${playerMessage}`);
-
     document.getElementById("loading")?.classList.remove("hidden");
 
     try {
       const url = useProxy ? LOCAL_PROXY : OPENROUTER_URL;
       const headers = { "Content-Type": "application/json" };
       if (!useProxy) {
-        headers["Authorization"] = "Bearer " + apiKey;
+        const key = apiKey || window.GAME_CONFIG?.apiKey || "";
+        headers["Authorization"] = "Bearer " + key;
         headers["HTTP-Referer"] = window.location.origin;
         headers["X-Title"] = "Old Greg's Tavern";
       }
@@ -123,7 +138,6 @@ FORMAT: Use **bold**, *italic*, "quotes". Embed code blocks inline. Always end w
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
-
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed.startsWith("data: ")) continue;
@@ -176,13 +190,16 @@ FORMAT: Use **bold**, *italic*, "quotes". Embed code blocks inline. Always end w
   }
 
   function parseBlocks(text) {
-    const blocks = { combat: null, checks: [], loot: [], quests: [], locations: [], narrative: text };
+    const blocks = { combat: null, checks: [], loot: [], quests: [], locations: [], scenes: [], npcs: [], loreEntries: [], narrative: text };
     const patterns = [
-      { key: "combat", re: /```combat\s*\n?([\s\S]*?)```/g, single: true },
-      { key: "checks", re: /```check\s*\n?([\s\S]*?)```/g },
-      { key: "loot",   re: /```loot\s*\n?([\s\S]*?)```/g },
-      { key: "quests", re: /```quest\s*\n?([\s\S]*?)```/g },
-      { key: "locations", re: /```location\s*\n?([\s\S]*?)```/g },
+      { key: "combat",     re: /```combat\s*\n?([\s\S]*?)```/g, single: true },
+      { key: "checks",     re: /```check\s*\n?([\s\S]*?)```/g },
+      { key: "loot",       re: /```loot\s*\n?([\s\S]*?)```/g },
+      { key: "quests",     re: /```quest\s*\n?([\s\S]*?)```/g },
+      { key: "locations",  re: /```location\s*\n?([\s\S]*?)```/g },
+      { key: "scenes",     re: /```scene\s*\n?([\s\S]*?)```/g },
+      { key: "npcs",       re: /```npc\s*\n?([\s\S]*?)```/g },
+      { key: "loreEntries",re: /```lore\s*\n?([\s\S]*?)```/g },
     ];
     for (const p of patterns) {
       let m;
@@ -190,14 +207,14 @@ FORMAT: Use **bold**, *italic*, "quotes". Embed code blocks inline. Always end w
         try { const parsed = JSON.parse(m[1].trim()); p.single ? (blocks[p.key] = parsed) : blocks[p.key].push(parsed); } catch {}
       }
     }
-    blocks.narrative = text.replace(/```(?:combat|check|loot|quest|location)\s*\n?[\s\S]*?```/g, "").trim();
+    blocks.narrative = text.replace(/```(?:combat|check|loot|quest|location|scene|npc|lore)\s*\n?[\s\S]*?```/g, "").trim();
     return blocks;
   }
 
   function parseOptions(narrative) {
     const options = [];
-    let m;
     const re = /^\s*(\d+)\.\s*(.+)$/gm;
+    let m;
     while ((m = re.exec(narrative))) options.push(m[2].trim());
     return options;
   }

@@ -1,7 +1,7 @@
-/* ═══════════════════════════════════════════════
-   character.js — Character with mana, skills,
-   cooldowns & status effects
-   ═══════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════
+   character.js — Character with equipment,
+   mana, skills, cooldowns & status effects
+   ═══════════════════════════════════════════ */
 
 const Character = (() => {
   const CLASS_DATA = {
@@ -46,7 +46,7 @@ const Character = (() => {
     Tiefling: { bonus: { CHA: 2, INT: 1 }, desc: "Cunning — +2 CHA, +1 INT" },
   };
 
-  function create(name, race, charClass, baseStats) {
+  function create(name, race, charClass, baseStats, options = {}) {
     const raceBonuses = RACE_DATA[race]?.bonus || {};
     const stats = { ...baseStats };
     for (const [stat, val] of Object.entries(raceBonuses)) stats[stat] = (stats[stat] || 10) + val;
@@ -56,7 +56,6 @@ const Character = (() => {
     const maxHp = cd.hpBase + Math.max(0, conMod);
     const statForMana = cd.bonusStat === "STR" ? "CON" : cd.bonusStat;
     const maxMana = cd.manaBase + Math.max(0, Dice.modifier(stats[statForMana]));
-
     const skills = cd.skills.map((s) => ({ ...s, currentCooldown: 0 }));
 
     return {
@@ -66,9 +65,15 @@ const Character = (() => {
       ac: 10 + Dice.modifier(stats.DEX),
       gold: 10,
       inventory: ["Torch", getStartingWeapon(charClass), "Health Potion"],
-      quests: [], skills,
-      statusEffects: [],
+      quests: [], skills, statusEffects: [],
+      equipment: Equipment.createSlots(),
       turnCount: 0,
+      questsCompleted: 0,
+      pacifistCount: 0,
+      permadeath: options.permadeath || false,
+      dungeonMode: options.dungeonMode || false,
+      dungeonFloor: 0,
+      dungeonMaxFloor: 5,
     };
   }
 
@@ -101,14 +106,10 @@ const Character = (() => {
   function addStatus(char, name, duration) {
     char.statusEffects = char.statusEffects.filter((s) => s.name !== name);
     const templates = {
-      Poisoned:  { hpPerTurn: -2, icon: "🤢" },
-      Stunned:   { skipTurn: true, icon: "💫" },
-      Blessed:   { atkBonus: 2, icon: "✨" },
-      Shielded:  { acBonus: 3, icon: "🛡️" },
-      Inspired:  { allBonus: 2, icon: "🎵" },
-      Slowed:    { atkPenalty: -2, icon: "🐌" },
-      Marked:    { dmgBonus: 2, icon: "🎯" },
-      Dodging:   { dodge: true, icon: "💨" },
+      Poisoned:  { hpPerTurn: -2, icon: "🤢" }, Stunned: { skipTurn: true, icon: "💫" },
+      Blessed:   { atkBonus: 2, icon: "✨" },    Shielded: { acBonus: 3, icon: "🛡️" },
+      Inspired:  { allBonus: 2, icon: "🎵" },    Slowed: { atkPenalty: -2, icon: "🐌" },
+      Marked:    { dmgBonus: 2, icon: "🎯" },    Dodging: { dodge: true, icon: "💨" },
     };
     const t = templates[name];
     if (t) char.statusEffects.push({ name, ...t, duration: duration || 2 });
@@ -135,17 +136,23 @@ const Character = (() => {
   function isDodging(char) { return char.statusEffects.some((s) => s.dodge); }
 
   function getAtkBonus(char) {
-    return char.statusEffects.reduce((sum, e) => sum + (e.atkBonus || 0) + (e.allBonus || 0), 0);
+    const statusBonus = char.statusEffects.reduce((sum, e) => sum + (e.atkBonus || 0) + (e.allBonus || 0), 0);
+    const equipBonus = Equipment.getAtkBonus(char);
+    return statusBonus + equipBonus;
   }
+
   function getDmgBonus(char) {
     return char.statusEffects.reduce((sum, e) => sum + (e.dmgBonus || 0) + (e.allBonus || 0), 0);
   }
+
   function getACBonus(char) {
     return char.statusEffects.reduce((sum, e) => sum + (e.acBonus || 0), 0);
   }
+
   function tickCooldowns(char) {
     for (const s of char.skills) if (s.currentCooldown > 0) s.currentCooldown--;
   }
+
   function rollDice(notation) {
     const m = notation.match(/(\d+)d(\d+)/);
     if (!m) return 0;
@@ -155,13 +162,14 @@ const Character = (() => {
   function getSummary(char) {
     const stats = Object.entries(char.stats).map(([k, v]) => `${k}:${v}(${Dice.modStr(v)})`).join(" ");
     const effects = char.statusEffects.map((e) => `${e.icon}${e.name}(${e.duration}t)`).join(" ");
-    return `${char.name} — Lv${char.level} ${char.race} ${char.class} | HP:${char.hp}/${char.maxHp} MP:${char.mana}/${char.maxMana} AC:${char.ac}+${getACBonus(char)} | ${stats} | Gold:${char.gold} | Items:[${char.inventory.join(",")}] | Effects:[${effects}] | Skills:[${char.skills.map((s) => s.name + (s.currentCooldown > 0 ? "(cd" + s.currentCooldown + ")" : "")).join(",")}]`;
+    const eq = Object.entries(char.equipment).filter(([,v]) => v).map(([k,v]) => `${k}:${v}`).join(",");
+    return `${char.name} — Lv${char.level} ${char.race} ${char.class} | HP:${char.hp}/${char.maxHp} MP:${char.mana}/${char.maxMana} AC:${char.ac}+${getACBonus(char)} | ${stats} | Gold:${char.gold} | Items:[${char.inventory.join(",")}] | Equipped:[${eq}] | Effects:[${effects}] | Skills:[${char.skills.map((s) => s.name + (s.currentCooldown > 0 ? "(cd" + s.currentCooldown + ")" : "")).join(",")}]${char.permadeath ? " | PERMADEATH" : ""}${char.dungeonMode ? " | DUNGEON F" + char.dungeonFloor : ""}`;
   }
 
   return {
     create, addXp, takeDamage, heal, restoreMana, useMana,
     addStatus, processStatusEffects, hasStatus, isStunned, isDodging,
     getAtkBonus, getDmgBonus, getACBonus, tickCooldowns, rollDice,
-    getSummary, CLASS_DATA, RACE_DATA,
+    getSummary, CLASS_DATA, RACE_DATA, getStartingWeapon,
   };
 })();

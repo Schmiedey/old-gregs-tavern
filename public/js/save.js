@@ -1,5 +1,7 @@
 /* ═══════════════════════════════════════════
    save.js — localStorage persistence (3 slots)
+   Now includes equipment, achievements, NPCs,
+   journal, events data
    ═══════════════════════════════════════════ */
 
 const Save = (() => {
@@ -8,64 +10,47 @@ const Save = (() => {
 
   function _key(slot) { return SLOT_PREFIX + slot; }
 
-  /**
-   * Save full game state to a slot (0-2)
-   */
-  function save(slot, { player, conversationHistory, mapData, turnCount }) {
-    const data = {
-      version: 2,
+  function save(slot, data) {
+    const payload = {
+      version: 3,
       timestamp: Date.now(),
-      player,
-      conversationHistory,
-      mapData,
-      turnCount,
+      player: data.player,
+      conversationHistory: data.conversationHistory,
+      mapData: data.mapData,
+      turnCount: data.turnCount,
+      npcData: data.npcData,
+      journalData: data.journalData,
+      eventsData: data.eventsData,
+      worldMemory: data.worldMemory,
     };
     try {
-      localStorage.setItem(_key(slot), JSON.stringify(data));
+      localStorage.setItem(_key(slot), JSON.stringify(payload));
       return true;
-    } catch (e) {
-      console.error("Save failed:", e);
-      return false;
-    }
+    } catch (e) { console.error("Save failed:", e); return false; }
   }
 
-  /**
-   * Load game state from a slot
-   */
   function load(slot) {
     try {
       const raw = localStorage.getItem(_key(slot));
       if (!raw) return null;
       return JSON.parse(raw);
-    } catch (e) {
-      console.error("Load failed:", e);
-      return null;
-    }
+    } catch (e) { console.error("Load failed:", e); return null; }
   }
 
-  /**
-   * Delete a save slot
-   */
-  function remove(slot) {
-    localStorage.removeItem(_key(slot));
-  }
+  function remove(slot) { localStorage.removeItem(_key(slot)); }
 
-  /**
-   * Get metadata for all slots (for save/load UI)
-   */
   function listSlots() {
     const slots = [];
     for (let i = 0; i < MAX_SLOTS; i++) {
       const data = load(i);
       if (data) {
         slots.push({
-          slot: i,
-          name: data.player?.name || "Unknown",
-          level: data.player?.level || 1,
-          race: data.player?.race || "?",
-          class: data.player?.class || "?",
-          timestamp: data.timestamp,
+          slot: i, name: data.player?.name || "Unknown",
+          level: data.player?.level || 1, race: data.player?.race || "?",
+          class: data.player?.class || "?", timestamp: data.timestamp,
           date: new Date(data.timestamp).toLocaleString(),
+          permadeath: data.player?.permadeath || false,
+          dungeonFloor: data.player?.dungeonFloor || 0,
         });
       } else {
         slots.push({ slot: i, empty: true });
@@ -74,20 +59,10 @@ const Save = (() => {
     return slots;
   }
 
-  /**
-   * Auto-save to slot 0
-   */
-  function autoSave(state) {
-    return save(0, state);
-  }
+  function autoSave(state) { return save(0, state); }
 
-  /**
-   * Store/retrieve settings (API key, model, sound, etc.)
-   */
   function getSettings() {
-    try {
-      return JSON.parse(localStorage.getItem("ogt_settings") || "{}");
-    } catch { return {}; }
+    try { return JSON.parse(localStorage.getItem("ogt_settings") || "{}"); } catch { return {}; }
   }
 
   function saveSettings(settings) {
