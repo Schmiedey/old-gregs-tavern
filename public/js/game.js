@@ -55,10 +55,13 @@
     applySettings();
   }
 
+  function hasApiKey() {
+    return !!(window.GAME_CONFIG?.apiKey || Save.getSettings().apiKey || isLocal);
+  }
+
   /* ═══════ TITLE SCREEN ═══════ */
   $("#btn-new-game").addEventListener("click", () => {
-    const key = Save.getSettings().apiKey || "";
-    if (!key && !isLocal) { toggleModal("settings-modal", true); return; }
+    if (!hasApiKey()) { toggleModal("settings-modal", true); return; }
     showScreen("char");
   });
 
@@ -70,8 +73,8 @@
   $("#settings-save").addEventListener("click", () => {
     saveSettings();
     toggleModal("settings-modal", false);
-    // If came from "New Adventure" with no key, proceed
-    if (!player) showScreen("char");
+    // Only navigate if we came from New Adventure with no key
+    if (!player && hasApiKey()) showScreen("char");
   });
 
   /* ═══════ MODAL HELPER ═══════ */

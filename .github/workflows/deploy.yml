@@ -21,9 +21,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Inject API key
+        run: |
+          echo "window.GAME_CONFIG = { apiKey: '${{ secrets.OPENROUTER_API_KEY }}' };" > public/js/config.js
+
       - uses: actions/configure-pages@v4
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public
+
       - uses: actions/deploy-pages@v4
         id: deployment

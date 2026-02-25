@@ -57,7 +57,10 @@ RULES:
 FORMAT: Use **bold**, *italic*, "quotes". Embed code blocks inline. Always end with numbered options.`;
 
   function configure(key, selectedModel, proxy = false) {
-    apiKey = key; model = selectedModel || DEFAULT_MODEL; useProxy = proxy;
+    // Fall back to embedded key from config.js (injected at deploy time)
+    apiKey = key || window.GAME_CONFIG?.apiKey || "";
+    model = selectedModel || DEFAULT_MODEL;
+    useProxy = proxy;
   }
 
   function init(characterSummary) {
