@@ -27,11 +27,21 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          # Write standalone config.js
           printf 'window.GAME_CONFIG = { apiKey: "%s" };\n' "$OPENROUTER_API_KEY" > public/js/config.js
-          # Also inline into index.html to avoid CDN caching issues
-          sed -i "s|<script>window.GAME_CONFIG = window.GAME_CONFIG || {};</script>|<script>window.GAME_CONFIG = { apiKey: \"$OPENROUTER_API_KEY\" };</script>|" public/index.html
-          echo "Injection complete"
+          python3 - <<'EOF'
+import os
+key = os.environ['OPENROUTER_API_KEY']
+path = 'public/index.html'
+with open(path) as f:
+    html = f.read()
+html = html.replace(
+    '<script>window.GAME_CONFIG = window.GAME_CONFIG || {};</script>',
+    '<script>window.GAME_CONFIG = { apiKey: "' + key + '" };</script>'
+)
+with open(path, 'w') as f:
+    f.write(html)
+print(f"Injected {len(key)}-char key into index.html")
+EOF
 
       - uses: actions/configure-pages@v4
 
