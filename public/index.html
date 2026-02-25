@@ -7,9 +7,10 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2285%22>🍺</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
+
   <!-- ═══════ TITLE SCREEN ═══════ -->
   <div id="title-screen" class="screen active">
     <div class="title-content">
@@ -21,18 +22,21 @@
         </div>
         <div class="sign-bracket right">⛓️</div>
       </div>
-      <div class="title-art">
-        <pre class="ascii-art">
-     🏰
+      <div class="title-art"><pre class="ascii-art">     🏰
    ╔══════╗
    ║ 🍺🕯️ ║
    ║ OPEN ║
    ╚══╦═╦══╝
-  ════╩═╩════
-        </pre>
+  ════╩═╩════</pre></div>
+      <div class="title-buttons">
+        <button id="btn-new-game" class="btn btn-primary glow">⚔️ New Adventure</button>
+        <button id="btn-load-game" class="btn">📂 Load Game</button>
+        <div class="title-row">
+          <button id="btn-multiplayer" class="btn">🎮 Multiplayer</button>
+          <button id="btn-settings" class="btn">⚙️ Settings</button>
+        </div>
       </div>
-      <button id="btn-new-game" class="btn btn-primary glow">⚔️ New Adventure</button>
-      <p class="hint">Solo or with friends — your story awaits</p>
+      <p class="hint">Solo or co-op — your story awaits</p>
     </div>
   </div>
 
@@ -40,12 +44,10 @@
   <div id="char-screen" class="screen">
     <div class="char-creation">
       <h2>🛡️ Create Your Hero</h2>
-
       <div class="form-group">
         <label for="char-name">Name</label>
         <input type="text" id="char-name" placeholder="Enter your name…" maxlength="24" autofocus />
       </div>
-
       <div class="form-group">
         <label>Race</label>
         <div class="option-grid" id="race-grid">
@@ -57,7 +59,6 @@
           <button class="opt-btn" data-value="Tiefling"><span class="opt-icon">😈</span>Tiefling</button>
         </div>
       </div>
-
       <div class="form-group">
         <label>Class</label>
         <div class="option-grid" id="class-grid">
@@ -69,9 +70,8 @@
           <button class="opt-btn" data-value="Bard"><span class="opt-icon">🎵</span>Bard</button>
         </div>
       </div>
-
       <div id="stat-block" class="stat-block hidden">
-        <h3>📊 Rolled Stats <button id="btn-reroll" class="btn btn-sm">🎲 Reroll</button></h3>
+        <h3>📊 Stats <button id="btn-reroll" class="btn btn-sm">🎲 Reroll</button></h3>
         <div class="stats-grid">
           <div class="stat"><span class="stat-label">STR</span><span class="stat-val" id="stat-str">-</span></div>
           <div class="stat"><span class="stat-label">DEX</span><span class="stat-val" id="stat-dex">-</span></div>
@@ -81,59 +81,54 @@
           <div class="stat"><span class="stat-label">CHA</span><span class="stat-val" id="stat-cha">-</span></div>
         </div>
       </div>
-
       <button id="btn-start-adventure" class="btn btn-primary" disabled>🍺 Enter the Tavern</button>
     </div>
   </div>
 
   <!-- ═══════ MAIN GAME ═══════ -->
   <div id="game-screen" class="screen">
-    <!-- Sidebar: Character Sheet -->
     <aside id="sidebar" class="sidebar">
       <div class="sidebar-header">
         <h3 id="sb-name">Hero</h3>
         <span id="sb-race-class" class="sb-sub"></span>
         <span id="sb-level" class="sb-level">Lvl 1</span>
       </div>
-      <div class="hp-bar-wrap">
-        <div class="hp-bar" id="hp-bar"><span id="hp-text">20 / 20</span></div>
-      </div>
-      <div class="xp-bar-wrap">
-        <div class="xp-bar" id="xp-bar"><span id="xp-text">XP 0 / 100</span></div>
-      </div>
+      <div class="hp-bar-wrap"><div class="hp-bar" id="hp-bar"><span id="hp-text">20/20</span></div></div>
+      <div class="mana-bar-wrap"><div class="mana-bar" id="mana-bar"><span id="mana-text">10/10</span></div></div>
+      <div class="xp-bar-wrap"><div class="xp-bar" id="xp-bar"><span id="xp-text">XP 0/100</span></div></div>
       <div class="sb-stats" id="sb-stats"></div>
       <div class="sb-section">
-        <h4>🎒 Inventory</h4>
-        <ul id="sb-inventory"><li class="empty">Empty</li></ul>
+        <h4>✨ Status</h4>
+        <div id="sb-effects"><span class="empty">None</span></div>
       </div>
-      <div class="sb-section">
-        <h4>📜 Quests</h4>
-        <ul id="sb-quests"><li class="empty">None yet</li></ul>
-      </div>
-      <div class="sb-section">
-        <h4>💰 Gold: <span id="sb-gold">10</span></h4>
+      <div class="sb-section"><h4>🎒 Inventory</h4><ul id="sb-inventory"><li class="empty">Empty</li></ul></div>
+      <div class="sb-section"><h4>📜 Quests</h4><ul id="sb-quests"><li class="empty">None yet</li></ul></div>
+      <div class="sb-section"><h4>💰 Gold: <span id="sb-gold">10</span></h4></div>
+      <div class="sb-toolbar">
+        <button id="btn-shop" class="btn btn-sm">🛒 Shop</button>
+        <button id="btn-map" class="btn btn-sm">🗺️ Map</button>
+        <button id="btn-dice-history" class="btn btn-sm">🎲 Rolls</button>
+        <button id="btn-save-game" class="btn btn-sm">💾 Save</button>
+        <button id="btn-game-settings" class="btn btn-sm">⚙️</button>
       </div>
       <button id="btn-toggle-sidebar" class="btn-sidebar-toggle">◀</button>
     </aside>
 
-    <!-- Main Content -->
     <main class="game-main">
-      <!-- Narrative Log -->
+      <!-- Enemy HP bars (combat) -->
+      <div id="enemy-bars" class="enemy-bars"></div>
+
       <div id="narrative-log" class="narrative-log">
         <div id="messages" class="messages"></div>
       </div>
 
-      <!-- Quick Actions -->
-      <div id="quick-actions" class="quick-actions">
-        <!-- Populated dynamically -->
-      </div>
+      <div id="quick-actions" class="quick-actions"></div>
 
-      <!-- Input -->
       <div class="input-bar">
         <div class="dice-tray">
-          <button class="btn btn-dice" data-sides="20" title="Roll d20">d20</button>
-          <button class="btn btn-dice" data-sides="12" title="Roll d12">d12</button>
-          <button class="btn btn-dice" data-sides="6" title="Roll d6">d6</button>
+          <button class="btn btn-dice" data-sides="20" title="d20">d20</button>
+          <button class="btn btn-dice" data-sides="12" title="d12">d12</button>
+          <button class="btn btn-dice" data-sides="6" title="d6">d6</button>
         </div>
         <input type="text" id="player-input" placeholder="What do you do?" maxlength="500" />
         <button id="btn-send" class="btn btn-send">⚔️</button>
@@ -141,7 +136,7 @@
     </main>
   </div>
 
-  <!-- ═══════ DICE ROLL OVERLAY ═══════ -->
+  <!-- ═══════ DICE OVERLAY ═══════ -->
   <div id="dice-overlay" class="dice-overlay hidden">
     <div class="dice-result">
       <div class="dice-icon">🎲</div>
@@ -161,10 +156,103 @@
     <span>The Game Master ponders…</span>
   </div>
 
-  <script src="/js/dice.js"></script>
-  <script src="/js/character.js"></script>
-  <script src="/js/ai.js"></script>
-  <script src="/js/combat.js"></script>
-  <script src="/js/game.js"></script>
+  <!-- ═══════ SETTINGS MODAL ═══════ -->
+  <div id="settings-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header"><h3>⚙️ Settings</h3><button class="modal-close">✕</button></div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="settings-key">OpenRouter API Key</label>
+          <input type="password" id="settings-key" placeholder="sk-or-v1-…" />
+          <p class="form-hint">Get a free key at <a href="https://openrouter.ai" target="_blank">openrouter.ai</a></p>
+        </div>
+        <div class="form-group">
+          <label for="settings-model">AI Model</label>
+          <select id="settings-model">
+            <option value="google/gemini-2.0-flash-001">Gemini 2.0 Flash (fast, free)</option>
+            <option value="google/gemini-2.5-flash-preview">Gemini 2.5 Flash (smart)</option>
+            <option value="meta-llama/llama-4-maverick">Llama 4 Maverick (free)</option>
+            <option value="anthropic/claude-sonnet-4">Claude Sonnet 4 (premium)</option>
+            <option value="openai/gpt-4o">GPT-4o (premium)</option>
+            <option value="openai/gpt-4o-mini">GPT-4o Mini (cheap)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label><input type="checkbox" id="settings-sound" checked /> 🔊 Sound Effects</label>
+        </div>
+        <button id="settings-save" class="btn btn-primary">💾 Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ SAVE/LOAD MODAL ═══════ -->
+  <div id="save-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header"><h3>💾 Save / Load</h3><button class="modal-close">✕</button></div>
+      <div class="modal-body" id="save-slots"></div>
+    </div>
+  </div>
+
+  <!-- ═══════ SHOP MODAL ═══════ -->
+  <div id="shop-modal" class="modal-overlay hidden">
+    <div class="modal modal-wide">
+      <div class="modal-header"><h3>🛒 Merchant</h3><button class="modal-close">✕</button></div>
+      <div class="modal-body" id="shop-content"></div>
+    </div>
+  </div>
+
+  <!-- ═══════ MAP MODAL ═══════ -->
+  <div id="map-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header"><h3>🗺️ Map of Eldermoor</h3><button class="modal-close">✕</button></div>
+      <div class="modal-body" id="map-content"></div>
+    </div>
+  </div>
+
+  <!-- ═══════ DICE HISTORY MODAL ═══════ -->
+  <div id="dice-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header"><h3>🎲 Dice History</h3><button class="modal-close">✕</button></div>
+      <div class="modal-body" id="dice-history-list"></div>
+    </div>
+  </div>
+
+  <!-- ═══════ MULTIPLAYER MODAL ═══════ -->
+  <div id="mp-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header"><h3>🎮 Multiplayer</h3><button class="modal-close">✕</button></div>
+      <div class="modal-body">
+        <p class="form-hint">Play with friends! One player hosts, others join with the room code.</p>
+        <div class="mp-options">
+          <button id="mp-host" class="btn btn-primary">🏠 Host Game</button>
+          <div id="mp-room-display" class="hidden">
+            <p>Room Code: <strong id="mp-room-code"></strong></p>
+            <p class="form-hint">Share this code with friends</p>
+          </div>
+          <hr />
+          <div class="form-group">
+            <label for="mp-join-code">Join a Game</label>
+            <div class="mp-join-row">
+              <input type="text" id="mp-join-code" placeholder="Enter room code…" />
+              <button id="mp-join-btn" class="btn">🔗 Join</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ SCRIPTS ═══════ -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/dice.js"></script>
+  <script src="js/save.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/character.js"></script>
+  <script src="js/shop.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/combat.js"></script>
+  <script src="js/multiplayer.js"></script>
+  <script src="js/game.js"></script>
 </body>
 </html>
