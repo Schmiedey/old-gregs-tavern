@@ -8,10 +8,15 @@ const Sound = (() => {
   let enabled = true;
 
   function ensureCtx() {
-    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
-    if (ctx.state === "suspended") ctx.resume();
+    if (!ctx) {
+      try { ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch (e) { console.warn("AudioContext unavailable:", e); return false; }
+    }
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    return true;
   }
 
+  function setEnabled(v) { enabled = v; if (!enabled) stopAmbient(); }
   function toggle() { enabled = !enabled; if (!enabled) stopAmbient(); return enabled; }
   function isEnabled() { return enabled; }
 
@@ -221,9 +226,13 @@ const Sound = (() => {
   }
 
   return {
-    toggle, isEnabled, diceRoll, swordHit, magic, levelUp,
+    ensureCtx, toggle, isEnabled, setEnabled,
+    diceRoll, swordHit, magic, levelUp,
     gold, heal, hit, death, miss, questComplete, shop,
     achievement, screenShake,
     startAmbient, stopAmbient, setAmbientType,
+    playAmbient: startAmbient,
+    select: shop,
+    fanfare: levelUp,
   };
 })();

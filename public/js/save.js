@@ -12,16 +12,13 @@ const Save = (() => {
 
   function save(slot, data) {
     const payload = {
-      version: 3,
+      version: 4,
       timestamp: Date.now(),
-      player: data.player,
+      charData: data.charData,
+      mapId: data.mapId,
+      playerPos: data.playerPos,
+      visited: data.visited,
       conversationHistory: data.conversationHistory,
-      mapData: data.mapData,
-      turnCount: data.turnCount,
-      npcData: data.npcData,
-      journalData: data.journalData,
-      eventsData: data.eventsData,
-      worldMemory: data.worldMemory,
     };
     try {
       localStorage.setItem(_key(slot), JSON.stringify(payload));
@@ -44,13 +41,14 @@ const Save = (() => {
     for (let i = 0; i < MAX_SLOTS; i++) {
       const data = load(i);
       if (data) {
+        const ch = data.charData || data.player;
         slots.push({
-          slot: i, name: data.player?.name || "Unknown",
-          level: data.player?.level || 1, race: data.player?.race || "?",
-          class: data.player?.class || "?", timestamp: data.timestamp,
+          slot: i, name: ch?.name || "Unknown",
+          level: ch?.level || 1, race: ch?.race || "?",
+          class: ch?.class || "?", timestamp: data.timestamp,
           date: new Date(data.timestamp).toLocaleString(),
-          permadeath: data.player?.permadeath || false,
-          dungeonFloor: data.player?.dungeonFloor || 0,
+          permadeath: ch?.permadeath || false,
+          empty: false,
         });
       } else {
         slots.push({ slot: i, empty: true });
