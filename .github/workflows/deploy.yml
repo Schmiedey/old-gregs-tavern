@@ -27,8 +27,11 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
+          # Write standalone config.js
           printf 'window.GAME_CONFIG = { apiKey: "%s" };\n' "$OPENROUTER_API_KEY" > public/js/config.js
-          echo "Config written: $(wc -c < public/js/config.js) bytes"
+          # Also inline into index.html to avoid CDN caching issues
+          sed -i "s|<script>window.GAME_CONFIG = window.GAME_CONFIG || {};</script>|<script>window.GAME_CONFIG = { apiKey: \"$OPENROUTER_API_KEY\" };</script>|" public/index.html
+          echo "Injection complete"
 
       - uses: actions/configure-pages@v4
 
