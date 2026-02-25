@@ -28,20 +28,14 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           printf 'window.GAME_CONFIG = { apiKey: "%s" };\n' "$OPENROUTER_API_KEY" > public/js/config.js
-          python3 - <<'EOF'
-import os
-key = os.environ['OPENROUTER_API_KEY']
+          python3 -c "
+import os; key = os.environ['OPENROUTER_API_KEY']
 path = 'public/index.html'
-with open(path) as f:
-    html = f.read()
-html = html.replace(
-    '<script>window.GAME_CONFIG = window.GAME_CONFIG || {};</script>',
-    '<script>window.GAME_CONFIG = { apiKey: "' + key + '" };</script>'
-)
-with open(path, 'w') as f:
-    f.write(html)
-print(f"Injected {len(key)}-char key into index.html")
-EOF
+with open(path) as f: html = f.read()
+html = html.replace('<script>window.GAME_CONFIG = window.GAME_CONFIG || {};</script>', '<script>window.GAME_CONFIG = { apiKey: \"' + key + '\" };</script>')
+with open(path, 'w') as f: f.write(html)
+print('Injected', len(key), 'char key into index.html')
+          "
 
       - uses: actions/configure-pages@v4
 
