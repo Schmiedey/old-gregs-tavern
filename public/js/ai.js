@@ -154,7 +154,8 @@ FORMAT: Use **bold**, *italic*, "quotes". Embed code blocks inline. Always end w
       const url = useProxy ? LOCAL_PROXY : OPENROUTER_URL;
       const headers = { "Content-Type": "application/json" };
       if (!useProxy) {
-        headers["Authorization"] = "Bearer " + apiKey;
+        const key = apiKey || window.GAME_CONFIG?.apiKey || "";
+        headers["Authorization"] = "Bearer " + key;
         headers["HTTP-Referer"] = window.location.origin;
         headers["X-Title"] = "Old Greg's Tavern";
       }

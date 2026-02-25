@@ -24,8 +24,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Inject API key
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          echo "window.GAME_CONFIG = { apiKey: '${{ secrets.OPENROUTER_API_KEY }}' };" > public/js/config.js
+          printf 'window.GAME_CONFIG = { apiKey: "%s" };\n' "$OPENROUTER_API_KEY" > public/js/config.js
+          echo "Config written: $(wc -c < public/js/config.js) bytes"
 
       - uses: actions/configure-pages@v4
 
